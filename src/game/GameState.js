@@ -147,14 +147,14 @@ export class GameStateManager {
 
   _loadBestScore() {
     try {
-      const saved = localStorage.getItem('kill_nailong_best')
+      const saved = localStorage.getItem('kill_naiwa_best')
       if (saved) this.bestScore = parseInt(saved, 10) || 0
     } catch (e) { /* ignore */ }
   }
 
   _saveBestScore() {
     try {
-      localStorage.setItem('kill_nailong_best', String(this.bestScore))
+      localStorage.setItem('kill_naiwa_best', String(this.bestScore))
     } catch (e) { /* ignore */ }
   }
 

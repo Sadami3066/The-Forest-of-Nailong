@@ -3,7 +3,7 @@ import nailongGifUrl from '../assets/picture/奶龙大笑.gif'
 
 /**
  * GameEngine — 3D 森林场景
- * 极暗环境 + 树木 + 地面，奶龙不可视
+ * 极暗环境 + 树木 + 地面，奶蛙不可视
  */
 export class GameEngine {
   constructor() {
@@ -11,7 +11,7 @@ export class GameEngine {
     this.camera = null
     this.renderer = null
     this.raycaster = null
-    this.nailongCollider = null
+    this.naiwaCollider = null
     this.hitFlashMesh = null
     this.hitFlashTimer = null
     this.isRunning = false
@@ -52,7 +52,7 @@ export class GameEngine {
       // 场景元素
       this._createGround()
       this._createTrees()
-      this._createNailongCollider()
+      this._createNaiwaCollider()
       this._createHitFlash()
 
       // resize
@@ -138,12 +138,12 @@ export class GameEngine {
 
   // ==================== 碰撞体 ====================
 
-  _createNailongCollider() {
+  _createNaiwaCollider() {
     const geo = new THREE.SphereGeometry(0.84, 16, 16)
     const mat = new THREE.MeshBasicMaterial({ visible: false })
-    this.nailongCollider = new THREE.Mesh(geo, mat)
-    this.nailongCollider.visible = false
-    this.scene.add(this.nailongCollider)
+    this.naiwaCollider = new THREE.Mesh(geo, mat)
+    this.naiwaCollider.visible = false
+    this.scene.add(this.naiwaCollider)
   }
 
   _createHitFlash() {
@@ -162,19 +162,19 @@ export class GameEngine {
 
   // ==================== 位置 / 射线 ====================
 
-  setNailongPosition(x, y, z) {
-    if (this.nailongCollider) {
-      this.nailongCollider.position.set(x, y, z)
+  setNaiwaPosition(x, y, z) {
+    if (this.naiwaCollider) {
+      this.naiwaCollider.position.set(x, y, z)
     }
   }
 
   checkAim() {
-    if (!this.nailongCollider) return { hit: false, distance: Infinity, point: null }
+    if (!this.naiwaCollider) return { hit: false, distance: Infinity, point: null }
     this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera)
-    const wasVisible = this.nailongCollider.visible
-    this.nailongCollider.visible = true
-    const intersects = this.raycaster.intersectObject(this.nailongCollider)
-    this.nailongCollider.visible = wasVisible
+    const wasVisible = this.naiwaCollider.visible
+    this.naiwaCollider.visible = true
+    const intersects = this.raycaster.intersectObject(this.naiwaCollider)
+    this.naiwaCollider.visible = wasVisible
     if (intersects.length > 0) {
       return { hit: true, distance: intersects[0].distance, point: intersects[0].point.clone() }
     }
@@ -222,7 +222,7 @@ export class GameEngine {
     if (this._afterimagesEnabled) return
     this._afterimagesEnabled = true
     const img = new Image()
-    img.src = nailongGifUrl
+    img.src = naiwaGifUrl
     img.onload = () => {
       this._afterimageTexture = new THREE.Texture(img)
       this._afterimageTexture.needsUpdate = true

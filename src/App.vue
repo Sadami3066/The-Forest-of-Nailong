@@ -3,9 +3,9 @@
     <StartScreen
       v-show="currentState === 'idle' && !showTutorial && !showSettings"
       :best-score="bestScore"
-      @start="handleStart"
-      @tutorial="showTutorial = true"
-      @settings="openSettings"
+      @start="tryStartBGM(); handleStart()"
+      @tutorial="tryStartBGM(); showTutorial = true"
+      @settings="tryStartBGM(); openSettings()"
     />
 
     <GameView
@@ -43,14 +43,14 @@ import SettingsPanel from './components/SettingsPanel.vue'
 import { GameEngine } from './game/GameEngine.js'
 import { AudioManager } from './game/AudioManager.js'
 import { GyroscopeInput } from './game/GyroscopeInput.js'
-import { NailongController } from './game/NailongController.js'
+import { NaiwaController } from './game/NaiwaController.js'
 import { GameStateManager, GameState } from './game/GameState.js'
 
 // ---- 游戏核心实例 ----
 const engine = new GameEngine()
 const audio = new AudioManager()
 const input = new GyroscopeInput()
-const nailong = new NailongController()
+const naiwa = new NaiwaController()
 const gs = new GameStateManager()
 
 // ---- 响应式状态 ----
@@ -60,6 +60,22 @@ const bestScore = ref(gs.bestScore)
 const showTutorial = ref(false)
 const showSettings = ref(false)
 const currentVolumes = reactive(audio.getVolumes())
+
+// 主页BGM — 首次用户交互时启动
+let _bgmStarted = false
+async function tryStartBGM() {
+  if (_bgmStarted) return
+  _bgmStarted = true
+  try {
+    await audio.init()
+    audio.startBGM()
+    console.log('主页BGM已启动')
+  } catch (e) { console.warn('BGM启动失败:', e) }
+}
+
+// 页面加载后立即准备AudioContext，首次点击/触摸即启动BGM
+document.addEventListener('click', tryStartBGM, { once: true })
+document.addEventListener('touchstart', tryStartBGM, { once: true })
 const uiState = ref({
   state: 'idle', score: 0, timeRemaining: 60,
   bestScore: 0, won: false, getAccuracy: () => 0
@@ -75,7 +91,7 @@ function syncUIState() {
 
 // ---- 游戏循环 ----
 let animFrameId = null, lastTime = 0, isLoopRunning = false
-let prevNailongState = 'idle', gifTimer = null
+let prevNaiwaState = 'idle', gifTimer = null
 const _playerPos = new THREE.Vector3(0, 0, 0)
 const _upVec = new THREE.Vector3(0, 1, 0)
 
@@ -91,27 +107,27 @@ function gameLoop(timestamp) {
   audio.updateListenerOrientation(forward, _upVec)
 
   if (gs.state === GameState.PLAYING) {
-    // 更新奶龙 — 检测是否触碰玩家
-    const result = nailong.update(dt, _playerPos)
+    // 更新奶蛙 — 检测是否触碰玩家
+    const result = naiwa.update(dt, _playerPos)
     if (result.gameOver) {
-      // 奶龙触碰玩家 → 失败
+      // 奶蛙触碰玩家 → 失败
       handleGameOver(false)
       return
     }
 
-    const pos = nailong.position
-    engine.setNailongPosition(pos.x, pos.y, pos.z)
-    audio.updateNailongPosition(pos.x, pos.y, pos.z)
+    const pos = naiwa.position
+    engine.setNaiwaPosition(pos.x, pos.y, pos.z)
+    audio.updateNaiwaPosition(pos.x, pos.y, pos.z)
 
     // 更新心跳速率
-    const dist = nailong.distanceTo(_playerPos)
+    const dist = naiwa.distanceTo(_playerPos)
     audio.updateHeartbeatRate(dist)
 
-    // 奶龙从 hit 恢复 → 重启笑声
-    if (prevNailongState === 'hit' && nailong.state !== 'hit') {
-      audio.startNailongSound()
+    // 奶蛙从 hit 恢复 → 重启笑声
+    if (prevNaiwaState === 'hit' && naiwa.state !== 'hit') {
+      audio.startNaiwaSound()
     }
-    prevNailongState = nailong.state
+    prevNaiwaState = naiwa.state
   }
 
   engine.render()
@@ -151,18 +167,18 @@ async function handleStart() {
   input.calibrate()
   input.enable()
 
-  // 奶龙
-  nailong.reset()
-  nailong.spawn(_playerPos)
-  prevNailongState = 'idle'
-  const pos = nailong.position
-  engine.setNailongPosition(pos.x, pos.y, pos.z)
-  audio.updateNailongPosition(pos.x, pos.y, pos.z)
+  // 奶蛙
+  naiwa.reset()
+  naiwa.spawn(_playerPos)
+  prevNaiwaState = 'idle'
+  const pos = naiwa.position
+  engine.setNaiwaPosition(pos.x, pos.y, pos.z)
+  audio.updateNaiwaPosition(pos.x, pos.y, pos.z)
 
   // 音频
-  audio.startNailongSound()
+  audio.startNaiwaSound()
   audio.startHeartbeat()
-  // audio.startBGM()  // TODO: BGM文件就绪后启用
+  audio.startBGM()
 
   // 键盘
   document.addEventListener('keydown', onKeyDown)
@@ -191,7 +207,7 @@ function handleGameOver(won) {
     audio.playLoseSound()
   }
   audio.stopHeartbeat()
-  audio.stopNailongSound()
+  audio.stopNaiwaSound()
   document.removeEventListener('keydown', onKeyDown)
   input.disable()
 
@@ -209,14 +225,14 @@ function handleFlash() {
   const aim = engine.checkAim()
 
   if (aim.hit) {
-    // 照中奶龙！
+    // 照中奶蛙！
     gs.recordKill()
     syncUIState()
     audio.playHitSound()
     engine.showHitFlash(aim.point)
-    nailong.onHit()
-    audio.stopNailongSound()
-    prevNailongState = 'hit'
+    naiwa.onHit()
+    audio.stopNaiwaSound()
+    prevNaiwaState = 'hit'
     showGif('kill', 2000)
   } else {
     audio.playMissSound()
@@ -255,7 +271,7 @@ function handleVolumeChange({ key, value }) {
   currentVolumes[key] = value
   switch (key) {
     case 'master': audio.setMasterVolume(value); break
-    case 'nailong': audio.setNailongVolume(value); break
+    case 'naiwa': audio.setNaiwaVolume(value); break
     case 'heartbeat': audio.setHeartbeatVolume(value); break
     case 'bgm': audio.setBGMVolume(value); break
     case 'sfx': audio.setSFXVolume(value); break
@@ -268,7 +284,7 @@ function handleBackToMenu() {
   if (gifTimer) clearTimeout(gifTimer)
   gifType.value = 'none'
   input.disable()
-  audio.stopNailongSound()
+  audio.stopNaiwaSound()
   audio.stopHeartbeat()
   audio.stopBGM()
   engine.dispose()

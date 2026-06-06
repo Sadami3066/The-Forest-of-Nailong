@@ -1,6 +1,7 @@
 <template>
   <div class="home-screen">
-    <div class="bg-ambient"></div>
+    <!-- 背景图片 -->
+    <div class="bg-image" :style="{ backgroundImage: `url(${bgImage})` }"></div>
     <div class="bg-fog"></div>
     <div class="bg-particles">
       <span v-for="i in 12" :key="i" class="float-particle" :style="particleStyle(i)"></span>
@@ -10,7 +11,7 @@
       <div class="deco-line top"></div>
 
       <div class="title-block">
-        <h1 class="title-main">射 杀 奶 龙</h1>
+        <h1 class="title-main">奶 蛙 之 森</h1>
         <p class="title-sub">— 暗 黑 森 林 · 听 声 辨 位 —</p>
       </div>
 
@@ -22,7 +23,6 @@
         <span class="divider-dot"></span>
       </div>
 
-      <!-- 主菜单按钮 -->
       <div class="menu-buttons">
         <button class="menu-btn primary" @click="$emit('tutorial')">
           <span class="menu-btn-icon">📖</span>
@@ -54,6 +54,8 @@
 </template>
 
 <script setup>
+import bgImage from '../assets/picture/home.png'
+
 defineProps({ bestScore: { type: Number, default: 0 } })
 defineEmits(['start', 'tutorial', 'settings'])
 
@@ -72,14 +74,12 @@ function particleStyle(i) {
 .home-screen {
   width: 100%; height: 100%; position: relative;
   display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at center, #000d15 0%, #000308 60%, #000102 100%);
   overflow: hidden;
 }
-.bg-ambient {
+.bg-image {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background:
-    radial-gradient(ellipse at 30% 20%, rgba(0,40,20,0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(0,30,10,0.1) 0%, transparent 50%);
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  filter: brightness(0.65) saturate(0.8);
   pointer-events: none;
 }
 .bg-fog {
@@ -117,8 +117,6 @@ function particleStyle(i) {
 .divider-line { width: 35px; height: 1px; background: rgba(0,255,65,0.15); }
 .divider-dot { width: 3px; height: 3px; background: rgba(0,255,65,0.2); border-radius: 50%; }
 .divider-diamond { color: rgba(0,255,65,0.2); font-size: 0.5rem; }
-
-/* 菜单按钮 */
 .menu-buttons { display: flex; flex-direction: column; gap: 10px; }
 .menu-btn {
   display: flex; align-items: center; gap: 12px; width: 100%;

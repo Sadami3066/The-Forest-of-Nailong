@@ -1,32 +1,36 @@
 /**
  * AudioManager — 空间音频管理
- * 奶龙笑声(3D) + 心跳(2D,距离越近越快越响) + BGM(占位)
+ * 奶蛙笑声(3D) + 心跳(2D,距离越近越快越响) + BGM(占位)
  */
 import * as THREE from 'three'
-import nailongLaughUrl from '../assets/audio/奶龙大笑.mp3'
+import naiwaLaughUrl from '../assets/audio/奶龙大笑.mp3'
 import gunshotUrl from '../assets/audio/开枪音效.mp3'
+import bgmUrl from '../assets/audio/bgm.mp3'
+import nervous1Url from '../assets/audio/nervous1.mp3'
+import nervous2Url from '../assets/audio/nervous2.mp3'
+import nervous3Url from '../assets/audio/nervous3.mp3'
 
 export class AudioManager {
   constructor() {
     this.ctx = null
     this.listener = null
 
-    // 奶龙 3D 笑声
-    this._nailongPanner = null
-    this._nailongGain = null
-    this._nailongSource = null
-    this._nailongBuffer = null
-    this._isNailongPlaying = false
+    // 奶蛙 3D 笑声
+    this._naiwaPanner = null
+    this._naiwaGain = null
+    this._naiwaSource = null
+    this._naiwaBuffer = null
+    this._isNaiwaPlaying = false
 
     // 手电筒音效
     this._flashBuffer = null
 
-    // 心跳 (2D，不空间化)
+    // 心跳 — 3档音频文件，根据距离即时切换
     this._heartbeatGain = null
     this._heartbeatSource = null
-    this._heartbeatBuffer = null
+    this._heartbeatBuffers = {}   // { 1: buffer, 2: buffer, 3: buffer }
     this._heartbeatPlaying = false
-    this._heartbeatRate = 1.0  // 播放速率 (1.0=正常, 2.0=两倍快)
+    this._currentHeartLevel = 0   // 当前播放的档位 0=无 1=慢 2=快 3=超快
 
     // BGM
     this._bgmGain = null
@@ -35,13 +39,17 @@ export class AudioManager {
     this._bgmPlaying = false
 
     this.masterGain = 0.7
-    this.nailongVolume = 0.55
+    this.naiwaVolume = 0.55
+    this._heartbeatVol = 0.7
+    this._bgmVolume = 0.5
     this._isLoaded = false
   }
 
   async init() {
-    if (this.ctx && this.ctx.state !== 'closed') await this.ctx.close()
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)()
+    // 如果已有活跃的 context（BGM 可能在播放），不要关闭它
+    if (!this.ctx || this.ctx.state === 'closed') {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)()
+    }
     if (this.ctx.state === 'suspended') await this.ctx.resume()
 
     this.listener = this.ctx.listener
@@ -55,18 +63,26 @@ export class AudioManager {
     this.listener.upY.value = 1
     this.listener.upZ.value = 0
 
-    await this._loadAudioFiles()
+    if (!this._isLoaded) {
+      await this._loadAudioFiles()
+    }
     console.log('AudioManager initialized')
   }
 
   async _loadAudioFiles() {
     try {
-      const [nailongBuf, flashBuf] = await Promise.all([
-        this._loadBuffer(nailongLaughUrl),
-        this._loadBuffer(gunshotUrl)
+      const [naiwaBuf, flashBuf, bgmBuf, hb1, hb2, hb3] = await Promise.all([
+        this._loadBuffer(naiwaLaughUrl),
+        this._loadBuffer(gunshotUrl),
+        this._loadBuffer(bgmUrl).catch(() => null),
+        this._loadBuffer(nervous1Url).catch(() => null),
+        this._loadBuffer(nervous2Url).catch(() => null),
+        this._loadBuffer(nervous3Url).catch(() => null)
       ])
-      this._nailongBuffer = nailongBuf
+      this._naiwaBuffer = naiwaBuf
       this._flashBuffer = flashBuf
+      this._bgmBuffer = bgmBuf
+      this._heartbeatBuffers = { 1: hb1, 2: hb2, 3: hb3 }
       this._isLoaded = true
       console.log('Audio files loaded')
     } catch (e) {
@@ -80,150 +96,170 @@ export class AudioManager {
     return await this.ctx.decodeAudioData(await r.arrayBuffer())
   }
 
-  // ==================== 奶龙 3D 笑声 ====================
+  // ==================== 奶蛙 3D 笑声 ====================
 
-  startNailongSound() {
-    if (!this.ctx || this._isNailongPlaying) return
-    this._nailongPanner = this.ctx.createPanner()
-    this._nailongPanner.panningModel = 'HRTF'
-    this._nailongPanner.distanceModel = 'inverse'
-    this._nailongPanner.refDistance = 4
-    this._nailongPanner.maxDistance = 18
-    this._nailongPanner.rolloffFactor = 1.5
+  startNaiwaSound() {
+    if (!this.ctx || this._isNaiwaPlaying) return
+    this._naiwaPanner = this.ctx.createPanner()
+    this._naiwaPanner.panningModel = 'HRTF'
+    this._naiwaPanner.distanceModel = 'inverse'
+    this._naiwaPanner.refDistance = 4
+    this._naiwaPanner.maxDistance = 18
+    this._naiwaPanner.rolloffFactor = 1.5
 
-    this._nailongGain = this.ctx.createGain()
-    this._nailongGain.gain.value = 0
+    this._naiwaGain = this.ctx.createGain()
+    this._naiwaGain.gain.value = 0
 
-    if (this._isLoaded && this._nailongBuffer) {
+    if (this._isLoaded && this._naiwaBuffer) {
       const src = this.ctx.createBufferSource()
-      src.buffer = this._nailongBuffer
+      src.buffer = this._naiwaBuffer
       src.loop = true
-      src.connect(this._nailongPanner)
+      src.connect(this._naiwaPanner)
       src.start(0)
-      this._nailongSource = src
+      this._naiwaSource = src
     } else {
-      this._playNailongSynthetic()
+      this._playNaiwaSynthetic()
     }
 
-    this._nailongPanner.connect(this._nailongGain)
-    this._nailongGain.connect(this.ctx.destination)
-    this._nailongGain.gain.setTargetAtTime(
-      this.nailongVolume * this.masterGain, this.ctx.currentTime, 0.3
+    this._naiwaPanner.connect(this._naiwaGain)
+    this._naiwaGain.connect(this.ctx.destination)
+    this._naiwaGain.gain.setTargetAtTime(
+      this.naiwaVolume * this.masterGain, this.ctx.currentTime, 0.3
     )
-    this._isNailongPlaying = true
+    this._isNaiwaPlaying = true
   }
 
-  _playNailongSynthetic() {
+  _playNaiwaSynthetic() {
     const osc = this.ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 180
     const lfo = this.ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 2.5
     const lfoG = this.ctx.createGain(); lfoG.gain.value = 0.5
     const mainG = this.ctx.createGain(); mainG.gain.value = 0
     lfo.connect(lfoG); lfoG.connect(mainG.gain); osc.connect(mainG)
-    mainG.connect(this._nailongPanner)
+    mainG.connect(this._naiwaPanner)
     osc.start(); lfo.start()
-    this._nailongSource = osc
+    this._naiwaSource = osc
     this._synthNodes = [osc, lfo, lfoG, mainG]
   }
 
-  stopNailongSound() {
-    if (!this._isNailongPlaying) return
-    try { this._nailongSource?.stop?.() } catch {}
+  stopNaiwaSound() {
+    if (!this._isNaiwaPlaying) return
+    try { this._naiwaSource?.stop?.() } catch {}
     if (this._synthNodes) {
       for (const n of this._synthNodes) { try { n.stop() } catch {}; n?.disconnect() }
       this._synthNodes = null
     }
-    this._nailongSource?.disconnect()
-    this._nailongGain?.disconnect()
-    this._nailongPanner?.disconnect()
-    this._nailongSource = null
-    this._nailongGain = null
-    this._nailongPanner = null
-    this._isNailongPlaying = false
+    this._naiwaSource?.disconnect()
+    this._naiwaGain?.disconnect()
+    this._naiwaPanner?.disconnect()
+    this._naiwaSource = null
+    this._naiwaGain = null
+    this._naiwaPanner = null
+    this._isNaiwaPlaying = false
   }
 
-  updateNailongPosition(x, y, z) {
-    if (this._nailongPanner) {
-      this._nailongPanner.positionX.value = x
-      this._nailongPanner.positionY.value = y
-      this._nailongPanner.positionZ.value = z
+  updateNaiwaPosition(x, y, z) {
+    if (this._naiwaPanner) {
+      this._naiwaPanner.positionX.value = x
+      this._naiwaPanner.positionY.value = y
+      this._naiwaPanner.positionZ.value = z
     }
   }
 
-  // 根据距离调整奶龙音量（HRTF 已处理距离衰减，这里微调）
-  setNailongVolumeByDistance(distance) {
-    if (!this._nailongGain) return
+  // 根据距离调整奶蛙音量（HRTF 已处理距离衰减，这里微调）
+  setNaiwaVolumeByDistance(distance) {
+    if (!this._naiwaGain) return
     const vol = Math.min(1, 1 / Math.max(1, distance / 4))
-    this._nailongGain.gain.setTargetAtTime(
-      vol * this.nailongVolume * this.masterGain, this.ctx.currentTime, 0.2
+    this._naiwaGain.gain.setTargetAtTime(
+      vol * this.naiwaVolume * this.masterGain, this.ctx.currentTime, 0.2
     )
   }
 
-  // ==================== 心跳 (2D) ====================
+  // ==================== 心跳 (2D, 3档即时切换) ====================
 
   startHeartbeat() {
     if (!this.ctx || this._heartbeatPlaying) return
-    // 用低频振荡模拟心跳
     this._heartbeatGain = this.ctx.createGain()
-    this._heartbeatGain.gain.value = 0
+    this._heartbeatGain.gain.value = 0.4 * this.masterGain
     this._heartbeatGain.connect(this.ctx.destination)
     this._heartbeatPlaying = true
-    // 开始心跳循环
-    this._beatHeart()
+    this._currentHeartLevel = 0
   }
 
-  _beatHeart() {
+  /**
+   * 根据距离播放对应心跳文件，支持即时切换
+   * @param {number} distance - 奶蛙到玩家的距离
+   */
+  updateHeartbeatRate(distance) {
     if (!this._heartbeatPlaying || !this.ctx) return
-    const now = this.ctx.currentTime
-    const osc = this.ctx.createOscillator()
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(50, now)
-    osc.frequency.linearRampToValueAtTime(30, now + 0.15)
-    const g = this.ctx.createGain()
-    g.gain.setValueAtTime(0, now)
-    g.gain.linearRampToValueAtTime(0.5, now + 0.05)
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
-    osc.connect(g)
-    g.connect(this._heartbeatGain)
-    osc.start(now)
-    osc.stop(now + 0.25)
-    // 根据距离决定下一次心跳的间隔
-    const interval = 0.6 / Math.max(0.5, this._heartbeatRate)
-    this._heartbeatTimer = setTimeout(() => this._beatHeart(), interval * 1000)
+
+    // 确定档位
+    let level = 3  // 距离 > 8: nervous3 (慢)
+    if (distance <= 4) level = 1       // < 4: nervous1 (最快)
+    else if (distance <= 8) level = 2  // 4-8: nervous2 (加快)
+
+    // 如果档位没变，不切换（让当前音频继续循环播放）
+    if (level === this._currentHeartLevel) return
+
+    // 档位变了 → 立即停止当前，播放新的
+    this._switchHeartbeat(level)
+  }
+
+  _switchHeartbeat(level) {
+    // 停止当前播放
+    if (this._heartbeatSource) {
+      try { this._heartbeatSource.stop() } catch {}
+      this._heartbeatSource.disconnect()
+      this._heartbeatSource = null
+    }
+
+    const buf = this._heartbeatBuffers[level]
+    if (!buf) return
+
+    // 立即开始播放新文件
+    const src = this.ctx.createBufferSource()
+    src.buffer = buf
+    src.loop = true
+    src.connect(this._heartbeatGain)
+    src.start(0)
+    this._heartbeatSource = src
+    this._currentHeartLevel = level
   }
 
   stopHeartbeat() {
     this._heartbeatPlaying = false
-    if (this._heartbeatTimer) clearTimeout(this._heartbeatTimer)
+    if (this._heartbeatSource) {
+      try { this._heartbeatSource.stop() } catch {}
+      this._heartbeatSource.disconnect()
+      this._heartbeatSource = null
+    }
     this._heartbeatGain?.disconnect()
     this._heartbeatGain = null
-  }
-
-  /**
-   * 更新心跳速率（奶龙越近越快）
-   * @param {number} distance - 奶龙到玩家的距离
-   */
-  updateHeartbeatRate(distance) {
-    // 距离 2→最快(3x), 距离 15→最慢(0.5x)
-    this._heartbeatRate = THREE.MathUtils.clamp(3 / Math.max(1, distance / 3), 0.6, 3.5)
-    if (this._heartbeatGain) {
-      const vol = 0.25 + 0.45 / Math.max(1, distance / 4)
-      this._heartbeatGain.gain.setTargetAtTime(vol * this.masterGain, this.ctx.currentTime, 0.3)
-    }
+    this._currentHeartLevel = 0
   }
 
   // ==================== BGM (占位) ====================
 
   startBGM() {
-    // TODO: 加载诡异BGM文件后启用
-    // if (!this.ctx || this._bgmPlaying) return
-    // this._bgmGain = this.ctx.createGain()
-    // ...
+    if (!this.ctx || this._bgmPlaying) return
+    if (!this._bgmBuffer) return
+    this._bgmGain = this.ctx.createGain()
+    this._bgmGain.gain.value = (this._bgmVolume || 0.5) * this.masterGain
+    this._bgmGain.connect(this.ctx.destination)
+    const src = this.ctx.createBufferSource()
+    src.buffer = this._bgmBuffer
+    src.loop = true
+    src.connect(this._bgmGain)
+    src.start(0)
+    this._bgmSource = src
+    this._bgmPlaying = true
   }
 
   stopBGM() {
     this._bgmPlaying = false
-    this._bgmSource?.stop?.()
+    try { this._bgmSource?.stop?.() } catch {}
+    this._bgmSource?.disconnect()
     this._bgmGain?.disconnect()
+    this._bgmSource = null
     this._bgmGain = null
   }
 
@@ -312,26 +348,32 @@ export class AudioManager {
   setMasterVolume(v) {
     this.masterGain = THREE.MathUtils.clamp(v, 0, 1)
     // 立即使新的 masterGain 生效
-    if (this._nailongGain) {
-      this._nailongGain.gain.setTargetAtTime(
-        this.nailongVolume * this.masterGain, this.ctx.currentTime, 0.1)
+    if (this._naiwaGain) {
+      this._naiwaGain.gain.setTargetAtTime(
+        this.naiwaVolume * this.masterGain, this.ctx.currentTime, 0.1)
     }
     if (this._heartbeatGain) {
-      const vol = 0.25 + 0.45 / Math.max(1, (this._lastNailongDist || 10) / 4)
-      this._heartbeatGain.gain.setTargetAtTime(vol * this.masterGain, this.ctx.currentTime, 0.1)
+      this._heartbeatGain.gain.setTargetAtTime(
+        (this._heartbeatVol || 0.7) * this.masterGain, this.ctx.currentTime, 0.1)
     }
   }
 
-  setNailongVolume(v) { this.nailongVolume = THREE.MathUtils.clamp(v, 0, 1) }
-  setHeartbeatVolume(v) { this._heartbeatBaseVolume = THREE.MathUtils.clamp(v, 0, 1) }
+  setNaiwaVolume(v) { this.naiwaVolume = THREE.MathUtils.clamp(v, 0, 1) }
+  setHeartbeatVolume(v) {
+    this._heartbeatVol = THREE.MathUtils.clamp(v, 0, 1)
+    if (this._heartbeatGain) {
+      this._heartbeatGain.gain.setTargetAtTime(
+        this._heartbeatVol * this.masterGain, this.ctx.currentTime, 0.1)
+    }
+  }
   setBGMVolume(v) { this._bgmVolume = THREE.MathUtils.clamp(v, 0, 1) }
   setSFXVolume(v) { this.sfxVolume = THREE.MathUtils.clamp(v, 0, 1) }
 
   getVolumes() {
     return {
       master: this.masterGain,
-      nailong: this.nailongVolume,
-      heartbeat: this._heartbeatBaseVolume || 0.7,
+      naiwa: this.naiwaVolume,
+      heartbeat: this._heartbeatVol || 0.7,
       bgm: this._bgmVolume || 0.5,
       sfx: this.sfxVolume
     }
@@ -348,7 +390,7 @@ export class AudioManager {
   }
 
   dispose() {
-    this.stopNailongSound()
+    this.stopNaiwaSound()
     this.stopHeartbeat()
     this.stopBGM()
     if (this.ctx && this.ctx.state !== 'closed') this.ctx.close()

@@ -24,14 +24,14 @@ import { reactive } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  volumes: { type: Object, default: () => ({ master: 0.7, nailong: 0.55, heartbeat: 0.7, bgm: 0.5, sfx: 0.8 }) }
+  volumes: { type: Object, default: () => ({ master: 0.7, naiwa: 0.55, heartbeat: 0.7, bgm: 0.5, sfx: 0.8 }) }
 })
 
 const emit = defineEmits(['update', 'close'])
 
 const sliders = reactive([
   { key: 'master', icon: '🔊', label: '主音量', value: props.volumes.master },
-  { key: 'nailong', icon: '👹', label: '奶龙笑声', value: props.volumes.nailong },
+  { key: 'naiwa', icon: '👹', label: '奶蛙笑声', value: props.volumes.naiwa },
   { key: 'heartbeat', icon: '💓', label: '心跳声', value: props.volumes.heartbeat },
   { key: 'bgm', icon: '🎵', label: '背景音乐', value: props.volumes.bgm },
   { key: 'sfx', icon: '💥', label: 'UI音效', value: props.volumes.sfx }

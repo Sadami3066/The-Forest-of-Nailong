@@ -1,13 +1,13 @@
 <template>
   <div class="gameover-overlay" v-if="visible">
     <div class="gameover-panel">
-      <!-- 输了时显示奶龙大笑 -->
+      <!-- 输了时显示奶蛙大笑 -->
       <img v-if="!gameState.won" :src="laughGif" class="laugh-gif" alt="" />
 
       <h2 class="gameover-title" :class="gameState.won ? 'win' : 'lose'">
         {{ gameState.won ? '✨ 你赢了！' : '💀 你输了' }}
       </h2>
-      <p class="gameover-sub">{{ gameState.won ? '成功在黑暗中存活了60秒' : '奶龙找到了你...' }}</p>
+      <p class="gameover-sub">{{ gameState.won ? '成功在黑暗中存活了60秒' : '奶蛙找到了你...' }}</p>
       <div class="hud-divider"></div>
 
       <div class="final-stats">

@@ -3,8 +3,8 @@
     <!-- Three.js 渲染画布 - 始终在DOM中 -->
     <canvas id="game-canvas" ref="canvasRef"></canvas>
 
-    <!-- 奶龙GIF弹出 -->
-    <NailongGif :type="gifType" :visible="gifType !== 'none'" />
+    <!-- 奶蛙GIF弹出 -->
+    <NaiwaGif :type="gifType" :visible="gifType !== 'none'" />
 
     <!-- HUD覆盖层 -->
     <div class="game-overlay">
@@ -34,7 +34,7 @@ import Crosshair from './Crosshair.vue'
 import FireButton from './FireButton.vue'
 import ScoreBoard from './ScoreBoard.vue'
 import GameOverModal from './GameOverModal.vue'
-import NailongGif from './NailongGif.vue'
+import NaiwaGif from './NaiwaGif.vue'
 
 const props = defineProps({
   gameState: { type: Object, required: true },
