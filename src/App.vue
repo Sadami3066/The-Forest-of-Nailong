@@ -326,7 +326,7 @@ function handleBackToMenu() {
   input.disable()
   audio.stopNaiwaSound()
   audio.stopHeartbeat()
-  audio.stopBGM()
+  // BGM继续播放，回到主页也保持
   engine.dispose()
   document.removeEventListener('keydown', onKeyDown)
   document.removeEventListener('click', onScreenTap)
