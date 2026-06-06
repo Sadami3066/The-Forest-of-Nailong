@@ -64,18 +64,18 @@ defineEmits(['start', 'tutorial', 'settings'])
 .bg-full {
   position: absolute; top: -10px; left: -10px; right: -10px; bottom: -10px;
   background-size: cover; background-position: center;
-  filter: brightness(0.5) contrast(1.1);
+  filter: brightness(0.85) contrast(1.05);
   animation: bgPulse 8s ease-in-out infinite;
 }
 @keyframes bgPulse {
-  0%, 100% { filter: brightness(0.5) contrast(1.1); }
-  50% { filter: brightness(0.55) contrast(1.15); }
+  0%, 100% { filter: brightness(0.85) contrast(1.05); }
+  50% { filter: brightness(0.9) contrast(1.1); }
 }
 
-/* 暗色遮罩 */
+/* 暗色遮罩 — 仅四角轻微压暗 */
 .bg-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%);
   pointer-events: none;
 }
 
@@ -86,8 +86,8 @@ defineEmits(['start', 'tutorial', 'settings'])
     0deg,
     transparent,
     transparent 3px,
-    rgba(0,0,0,0.06) 3px,
-    rgba(0,0,0,0.06) 6px
+    rgba(0,0,0,0.03) 3px,
+    rgba(0,0,0,0.03) 6px
   );
   pointer-events: none; z-index: 2;
 }
@@ -95,7 +95,7 @@ defineEmits(['start', 'tutorial', 'settings'])
 /* 噪点 */
 .noise {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  opacity: 0.03;
+  opacity: 0.015;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   pointer-events: none; z-index: 3;
 }
@@ -146,7 +146,7 @@ defineEmits(['start', 'tutorial', 'settings'])
 }
 .menu-btn {
   width: 100%; padding: 16px 20px;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.6);
   border: none;
   cursor: pointer; font-family: inherit;
   transition: all 0.25s ease;
