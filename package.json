@@ -1,0 +1,21 @@
+{
+  "name": "kill-nailong",
+  "private": true,
+  "version": "1.0.0",
+  "description": "射杀奶龙 - 听声辨位3D射击游戏",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.170.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "@vitejs/plugin-vue": "^5.1.0",
+    "vite": "^6.0.0"
+  }
+}

@@ -1,0 +1,162 @@
+/* ============================================================
+   射杀奶龙 — 全局样式
+   暗黑战术风 / 夜视感
+   ============================================================ */
+
+:root {
+  --bg-deep: #000308;
+  --hud-green: #00ff41;
+  --hud-green-dim: #005520;
+  --hud-red: #ff3333;
+  --hud-red-dim: #550000;
+  --hud-amber: #ffaa00;
+  --particle-green: #1a3a1a;
+  --text-primary: #ccddcc;
+  --text-dim: #556655;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@font-face {
+  font-family: 'HUD';
+  src: local('Courier New'), local('monospace');
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-deep);
+  font-family: 'HUD', 'Courier New', monospace;
+  color: var(--text-primary);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* ============================================================
+   通用UI元素
+   ============================================================ */
+
+.hud-text {
+  color: var(--hud-green);
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+  font-family: inherit;
+  letter-spacing: 0.05em;
+}
+
+.hud-text--dim {
+  color: var(--hud-green-dim);
+  text-shadow: none;
+}
+
+.hud-text--red {
+  color: var(--hud-red);
+  text-shadow: 0 0 8px rgba(255, 51, 51, 0.5);
+}
+
+.hud-panel {
+  background: rgba(0, 5, 10, 0.85);
+  border: 1px solid rgba(0, 255, 65, 0.15);
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+
+.hud-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hud-green-dim), transparent);
+  margin: 8px 0;
+}
+
+/* ============================================================
+   覆盖层（覆盖在Three.js canvas上）
+   ============================================================ */
+
+.game-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.game-overlay > * {
+  pointer-events: auto;
+}
+
+/* 命中闪光效果 */
+.hit-flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,50,50,0.3) 0%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+  transition: opacity 0.1s ease-out;
+}
+
+.hit-flash.active {
+  opacity: 1;
+  transition: opacity 0s;
+}
+
+/* ============================================================
+   动画
+   ============================================================ */
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+
+@media (max-width: 480px) {
+  .hud-panel {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Three.js 渲染测试</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.170.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const canvas = document.getElementById('c');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x001020);
+scene.fog = new THREE.Fog(0x001020, 8, 35);
+
+const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 60);
+camera.position.set(0, 1.6, 0);
+
+const renderer = new THREE.WebGLRenderer({ canvas });
+renderer.setSize(canvas.width, canvas.height);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+// 地面网格
+const grid = new THREE.PolarGridHelper(15, 32, 24, 64, 0x006630, 0x004420);
+grid.position.y = -1.6;
+scene.add(grid);
+
+// 彩色参考环
+[5, 10, 15].forEach((r, i) => {
+  const colors = [0x008844, 0x006633, 0x442200];
+  const geo = new THREE.RingGeometry(r - 0.3, r + 0.3, 80);
+  const mat = new THREE.MeshBasicMaterial({
+    color: colors[i], side: THREE.DoubleSide,
+    transparent: true, opacity: 0.5 - i * 0.1, depthWrite: false
+  });
+  const ring = new THREE.Mesh(geo, mat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = -1.59;
+  scene.add(ring);
+});
+
+// 测试立方体
+const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
+const cubeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+const cube = new THREE.Mesh(cubeGeo, cubeMat);
+cube.position.set(3, 1, -5);
+scene.add(cube);
+
+// 粒子
+const count = 100;
+const positions = new Float32Array(count * 3);
+for (let i = 0; i < count; i++) {
+  positions[i*3] = (Math.random() - 0.5) * 20;
+  positions[i*3+1] = (Math.random() - 0.5) * 10;
+  positions[i*3+2] = (Math.random() - 0.5) * 20;
+}
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+const pMat = new THREE.PointsMaterial({
+  color: 0x44ff44, size: 0.15,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+scene.add(new THREE.Points(pGeo, pMat));
+
+// 渲染
+let yaw = 0;
+function animate() {
+  yaw += 0.003;
+  camera.quaternion.setFromEuler(new THREE.Euler(0, yaw, 0, 'YXZ'));
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+console.log('✅ Three.js 渲染测试运行中');
+</script>
+</body>
+</html>
