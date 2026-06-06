@@ -50,8 +50,11 @@ export class GameEngine {
       this.raycaster = new THREE.Raycaster()
 
       // 场景元素
+      this._createSky()
       this._createGround()
       this._createTrees()
+      this._createFireflies()
+      this._createMist()
       this._createNaiwaCollider()
       this._createHitFlash()
 
@@ -69,13 +72,68 @@ export class GameEngine {
     }
   }
 
+  // ==================== 天空 ====================
+
+  _createSky() {
+    // 月亮 — 明亮温暖，高悬天空
+    const moonGeo = new THREE.CircleGeometry(3.5, 64)
+    const moonMat = new THREE.MeshBasicMaterial({
+      color: 0xddcc88,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false
+    })
+    this._moon = new THREE.Mesh(moonGeo, moonMat)
+    this._moon.position.set(10, 14, -25)
+    this.scene.add(this._moon)
+
+    // 月晕
+    const haloGeo = new THREE.CircleGeometry(6, 64)
+    const haloMat = new THREE.MeshBasicMaterial({
+      color: 0xddcc88,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.1,
+      depthWrite: false
+    })
+    const halo = new THREE.Mesh(haloGeo, haloMat)
+    halo.position.copy(this._moon.position)
+    this.scene.add(halo)
+    this._moonHalo = halo
+
+    // 星空
+    const starCount = 300
+    const starPositions = new Float32Array(starCount * 3)
+    for (let i = 0; i < starCount; i++) {
+      const theta = Math.random() * Math.PI * 2
+      const phi = Math.random() * Math.PI * 0.45 + 0.1
+      const radius = 22 + Math.random() * 25
+      starPositions[i * 3] = Math.cos(theta) * Math.cos(phi) * radius
+      starPositions[i * 3 + 1] = Math.sin(phi) * radius + 1.6
+      starPositions[i * 3 + 2] = Math.sin(theta) * Math.cos(phi) * radius
+    }
+    const starGeo = new THREE.BufferGeometry()
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3))
+    const starMat = new THREE.PointsMaterial({
+      color: 0xeeeedd,
+      size: 0.25,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+    this._stars = new THREE.Points(starGeo, starMat)
+    this.scene.add(this._stars)
+  }
+
   // ==================== 地面 ====================
 
   _createGround() {
-    // 深色森林地面
-    const groundGeo = new THREE.CircleGeometry(16, 48)
+    // 主地面
+    const groundGeo = new THREE.CircleGeometry(17, 56)
     const groundMat = new THREE.MeshBasicMaterial({
-      color: 0x0a0a06,
+      color: 0x080804,
       side: THREE.DoubleSide,
       depthWrite: true
     })
@@ -84,10 +142,10 @@ export class GameEngine {
     ground.position.y = -1.6
     this.scene.add(ground)
 
-    // 内圈稍亮（玩家脚下空地）
-    const innerGeo = new THREE.CircleGeometry(4, 32)
+    // 内圈 — 微微亮的空地
+    const innerGeo = new THREE.CircleGeometry(3.5, 36)
     const innerMat = new THREE.MeshBasicMaterial({
-      color: 0x111108,
+      color: 0x0e0e08,
       side: THREE.DoubleSide,
       depthWrite: true
     })
@@ -100,40 +158,151 @@ export class GameEngine {
   // ==================== 树木 ====================
 
   _createTrees() {
-    const treeCount = 35
-    const minDist = 5
-    const maxDist = 15
+    const treeCount = 40
+    const minDist = 3.5
+    const maxDist = 16
 
     for (let i = 0; i < treeCount; i++) {
-      const angle = (i / treeCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4
-      const dist = minDist + Math.random() * (maxDist - minDist)
+      const angle = (i / treeCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.6
+      const dist = minDist + Math.pow(Math.random(), 0.5) * (maxDist - minDist)
       const x = Math.cos(angle) * dist
       const z = Math.sin(angle) * dist
-      const height = 3 + Math.random() * 4
-      const radius = 0.15 + Math.random() * 0.3
+      const height = 2.5 + Math.random() * 6
+      const radius = 0.1 + Math.random() * 0.35
 
-      // 树干
-      const trunkGeo = new THREE.CylinderGeometry(radius * 0.7, radius, height, 8)
-      const darkness = 0.03 + Math.random() * 0.04
-      const trunkMat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(darkness, darkness * 0.8, darkness * 0.5)
-      })
-      const trunk = new THREE.Mesh(trunkGeo, trunkMat)
-      trunk.position.set(x, -1.6 + height / 2, z)
-      trunk.castShadow = false
-      trunk.receiveShadow = false
-      this.scene.add(trunk)
+      const treeType = Math.random()
 
-      // 树冠（更大更暗的多边形）
-      const crownGeo = new THREE.ConeGeometry(0.8 + Math.random() * 1.2, 2 + Math.random() * 3, 8)
-      const crownDarkness = 0.02 + Math.random() * 0.03
-      const crownMat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(crownDarkness, crownDarkness * 1.2, crownDarkness * 0.6)
-      })
-      const crown = new THREE.Mesh(crownGeo, crownMat)
-      crown.position.set(x, -1.6 + height + 1, z)
+      if (treeType < 0.6) {
+        // 针叶树 — 三角锥形
+        this._createPineTree(x, z, height, radius)
+      } else if (treeType < 0.85) {
+        // 阔叶树 — 圆柱干 + 球冠
+        this._createBroadTree(x, z, height, radius)
+      } else {
+        // 枯树 — 细干 + 分支
+        this._createDeadTree(x, z, height, radius)
+      }
+    }
+  }
+
+  _treeMat(darkness, greenBoost = 1) {
+    // 保留暗调但加入绿色：树干偏棕，树冠偏绿
+    return new THREE.MeshBasicMaterial({
+      color: new THREE.Color(
+        darkness * 0.6,
+        darkness * (0.7 + greenBoost * 0.8),
+        darkness * 0.3
+      ),
+      depthWrite: true
+    })
+  }
+
+  _createPineTree(x, z, h, r) {
+    const d = 0.04 + Math.random() * 0.04
+    // 树干
+    const trunkGeo = new THREE.CylinderGeometry(r * 0.5, r * 0.8, h * 0.5, 6)
+    const trunk = new THREE.Mesh(trunkGeo, this._treeMat(d, 0)) // 树干偏棕
+    trunk.position.set(x, -1.6 + h * 0.25, z)
+    this.scene.add(trunk)
+    // 多层锥形树冠 — 绿色
+    const layers = 2 + Math.floor(Math.random() * 2)
+    for (let l = 0; l < layers; l++) {
+      const crownH = h * (0.35 + l * 0.2)
+      const crownR = r * (3 - l * 0.7)
+      const crownGeo = new THREE.ConeGeometry(crownR, crownH, 8)
+      const crown = new THREE.Mesh(crownGeo, this._treeMat(d, 1.5)) // 树冠偏绿
+      crown.position.set(x, -1.6 + h * 0.3 + l * h * 0.25, z)
       this.scene.add(crown)
     }
+  }
+
+  _createBroadTree(x, z, h, r) {
+    const d = 0.035 + Math.random() * 0.035
+    const trunkGeo = new THREE.CylinderGeometry(r * 0.5, r * 0.7, h * 0.55, 8)
+    const trunk = new THREE.Mesh(trunkGeo, this._treeMat(d, 0))
+    trunk.position.set(x, -1.6 + h * 0.27, z)
+    this.scene.add(trunk)
+    // 球形树冠 — 绿色
+    const crownGeo = new THREE.SphereGeometry(r * 2.5, 8, 6)
+    const crown = new THREE.Mesh(crownGeo, this._treeMat(d, 1.6))
+    crown.position.set(x, -1.6 + h * 0.6, z)
+    crown.scale.y = 0.7
+    this.scene.add(crown)
+  }
+
+  _createDeadTree(x, z, h, r) {
+    const d = 0.05 + Math.random() * 0.03
+    const trunkGeo = new THREE.CylinderGeometry(r * 0.4, r * 0.6, h, 5)
+    const trunk = new THREE.Mesh(trunkGeo, this._treeMat(d, 0))
+    trunk.position.set(x, -1.6 + h * 0.5, z)
+    this.scene.add(trunk)
+    for (let b = 0; b < 3; b++) {
+      const branchLen = r * 3
+      const branchGeo = new THREE.CylinderGeometry(r * 0.12, r * 0.2, branchLen, 4)
+      const branch = new THREE.Mesh(branchGeo, this._treeMat(d, 0.2))
+      const bAngle = (b / 3) * Math.PI * 2 + Math.random() * 0.5
+      const bHeight = -1.6 + h * (0.4 + Math.random() * 0.4)
+      branch.position.set(
+        x + Math.cos(bAngle) * branchLen * 0.5, bHeight,
+        z + Math.sin(bAngle) * branchLen * 0.5
+      )
+      branch.rotation.z = (Math.random() - 0.5) * 1.2
+      branch.rotation.y = bAngle
+      this.scene.add(branch)
+    }
+  }
+
+  // ==================== 萤火虫 ====================
+
+  _createFireflies() {
+    const count = 30
+    this._fireflies = []
+    for (let i = 0; i < count; i++) {
+      const geo = new THREE.SphereGeometry(0.04, 4, 4)
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xaacc66,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      })
+      const fly = new THREE.Mesh(geo, mat)
+      fly.userData = {
+        baseX: (Math.random() - 0.5) * 24,
+        baseY: -1.2 + Math.random() * 4,
+        baseZ: (Math.random() - 0.5) * 24,
+        speed: 0.3 + Math.random() * 0.8,
+        phase: Math.random() * Math.PI * 2,
+        amplitude: 0.2 + Math.random() * 0.6
+      }
+      fly.position.set(fly.userData.baseX, fly.userData.baseY, fly.userData.baseZ)
+      this.scene.add(fly)
+      this._fireflies.push(fly)
+    }
+  }
+
+  // ==================== 地面薄雾 ====================
+
+  _createMist() {
+    const count = 50
+    const positions = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 30
+      positions[i * 3 + 1] = -1.5 + Math.random() * 1.5
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 30
+    }
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const mat = new THREE.PointsMaterial({
+      color: 0x334433,
+      size: 0.6,
+      transparent: true,
+      opacity: 0.15,
+      blending: THREE.NormalBlending,
+      depthWrite: false
+    })
+    this._mist = new THREE.Points(geo, mat)
+    this.scene.add(this._mist)
   }
 
   // ==================== 碰撞体 ====================
@@ -213,6 +382,32 @@ export class GameEngine {
 
   render() {
     if (!this.isRunning || !this.renderer || !this.scene || !this.camera) return
+
+    // 萤火虫闪烁
+    if (this._fireflies) {
+      const t = performance.now() * 0.001
+      for (const fly of this._fireflies) {
+        const u = fly.userData
+        fly.position.x = u.baseX + Math.sin(t * u.speed + u.phase) * u.amplitude
+        fly.position.y = u.baseY + Math.cos(t * u.speed * 0.7 + u.phase) * u.amplitude * 0.5
+        fly.position.z = u.baseZ + Math.cos(t * u.speed * 0.6 + u.phase + 1) * u.amplitude
+        // 呼吸式明暗
+        const glow = 0.3 + 0.7 * Math.abs(Math.sin(t * 2 + u.phase))
+        fly.material.opacity = glow * 0.6
+      }
+    }
+
+    // 薄雾缓慢漂移
+    if (this._mist) {
+      this._mist.rotation.y += 0.0001
+    }
+
+    // 月亮始终面朝玩家
+    if (this._moon && this.camera) {
+      this._moon.lookAt(this.camera.position)
+      if (this._moonHalo) this._moonHalo.lookAt(this.camera.position)
+    }
+
     this.renderer.render(this.scene, this.camera)
   }
 
