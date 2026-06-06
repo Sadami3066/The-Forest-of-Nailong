@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import nailongGifUrl from '../assets/picture/奶龙大笑.gif'
+import scareGifUrl from '../assets/picture/奶龙小笑.gif'
 
 /**
  * GameEngine — 3D 森林场景
@@ -381,6 +382,44 @@ export class GameEngine {
       return { hit: true, distance: intersects[0].distance, point: intersects[0].point.clone() }
     }
     return { hit: false, distance: Infinity, point: null }
+  }
+
+  // 奶蛙贴脸跳杀 — 恐怖闪屏
+  showJumpscare(position) {
+    if (!this.scene) return
+    // 大尺寸恐怖贴脸
+    const img = new Image()
+    img.src = scareGifUrl
+    img.onload = () => {
+      const tex = new THREE.Texture(img)
+      tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace
+      const mat = new THREE.SpriteMaterial({
+        map: tex, blending: THREE.AdditiveBlending,
+        transparent: true, opacity: 0.9, depthTest: false, depthWrite: false
+      })
+      const sprite = new THREE.Sprite(mat)
+      sprite.position.copy(position)
+      // 面朝玩家
+      sprite.position.y += 1
+      sprite.scale.set(5, 5, 1)
+      this.scene.add(sprite)
+
+      // 闪一下 400ms 后消失
+      let elapsed = 0
+      const animate = (t) => {
+        elapsed += 16
+        sprite.material.opacity = 0.9 * (1 - elapsed / 400)
+        sprite.scale.set(5 + elapsed * 0.02, 5 + elapsed * 0.02, 1)
+        if (elapsed < 400) {
+          requestAnimationFrame(animate)
+        } else {
+          this.scene.remove(sprite)
+          sprite.material.dispose()
+          tex.dispose()
+        }
+      }
+      requestAnimationFrame(animate)
+    }
   }
 
   showHitFlash(position) {

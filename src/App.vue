@@ -129,8 +129,11 @@ function gameLoop(timestamp) {
     // 更新奶蛙 — 检测是否触碰玩家
     const result = naiwa.update(dt, _playerPos)
     if (result.gameOver) {
-      // 奶蛙触碰玩家 → 失败
-      handleGameOver(false)
+      // 奶蛙贴脸 → 跳杀特效
+      isLoopRunning = false
+      engine.shakeScreen(0.15)
+      engine.showJumpscare(naiwa.position)
+      setTimeout(() => handleGameOver(false), 500)
       return
     }
 
