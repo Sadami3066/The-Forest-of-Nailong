@@ -1,27 +1,44 @@
 <template>
   <div id="app-root">
     <StartScreen
-      v-show="currentState === 'idle'"
+      v-show="currentState === 'idle' && !showTutorial && !showSettings"
       :best-score="bestScore"
       @start="handleStart"
+      @tutorial="showTutorial = true"
+      @settings="openSettings"
     />
 
     <GameView
-      v-show="currentState !== 'idle'"
+      v-show="currentState !== 'idle' && !showTutorial"
       :game-state="uiState"
       :gif-type="gifType"
       @fire="handleFlash"
       @restart="handleStart"
       @back-to-menu="handleBackToMenu"
     />
+
+    <TutorialOverlay
+      :visible="showTutorial"
+      @start="handleStartFromTutorial"
+      @skip="showTutorial = false"
+    />
+
+    <SettingsPanel
+      :visible="showSettings"
+      :volumes="currentVolumes"
+      @update="handleVolumeChange"
+      @close="showSettings = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue'
+import { ref, reactive, onUnmounted } from 'vue'
 import * as THREE from 'three'
 import StartScreen from './components/StartScreen.vue'
 import GameView from './components/GameView.vue'
+import TutorialOverlay from './components/TutorialOverlay.vue'
+import SettingsPanel from './components/SettingsPanel.vue'
 
 import { GameEngine } from './game/GameEngine.js'
 import { AudioManager } from './game/AudioManager.js'
@@ -40,6 +57,9 @@ const gs = new GameStateManager()
 const currentState = ref('idle')
 const gifType = ref('none')
 const bestScore = ref(gs.bestScore)
+const showTutorial = ref(false)
+const showSettings = ref(false)
+const currentVolumes = reactive(audio.getVolumes())
 const uiState = ref({
   state: 'idle', score: 0, timeRemaining: 60,
   bestScore: 0, won: false, getAccuracy: () => 0
@@ -213,6 +233,32 @@ function onKeyDown(e) {
   if (e.code === 'Space' || e.key === ' ') {
     e.preventDefault()
     handleFlash()
+  }
+}
+
+// 从教程直接进入游戏
+function handleStartFromTutorial() {
+  showTutorial.value = false
+  handleStart()
+}
+
+// 打开设置
+function openSettings() {
+  // 同步当前音量到滑块
+  const vols = audio.getVolumes()
+  Object.assign(currentVolumes, vols)
+  showSettings.value = true
+}
+
+// 音量变化
+function handleVolumeChange({ key, value }) {
+  currentVolumes[key] = value
+  switch (key) {
+    case 'master': audio.setMasterVolume(value); break
+    case 'nailong': audio.setNailongVolume(value); break
+    case 'heartbeat': audio.setHeartbeatVolume(value); break
+    case 'bgm': audio.setBGMVolume(value); break
+    case 'sfx': audio.setSFXVolume(value); break
   }
 }
 

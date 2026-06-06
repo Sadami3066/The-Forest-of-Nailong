@@ -307,6 +307,36 @@ export class AudioManager {
 
   // ==================== Listener ====================
 
+  // ==================== 音量控制 ====================
+
+  setMasterVolume(v) {
+    this.masterGain = THREE.MathUtils.clamp(v, 0, 1)
+    // 立即使新的 masterGain 生效
+    if (this._nailongGain) {
+      this._nailongGain.gain.setTargetAtTime(
+        this.nailongVolume * this.masterGain, this.ctx.currentTime, 0.1)
+    }
+    if (this._heartbeatGain) {
+      const vol = 0.25 + 0.45 / Math.max(1, (this._lastNailongDist || 10) / 4)
+      this._heartbeatGain.gain.setTargetAtTime(vol * this.masterGain, this.ctx.currentTime, 0.1)
+    }
+  }
+
+  setNailongVolume(v) { this.nailongVolume = THREE.MathUtils.clamp(v, 0, 1) }
+  setHeartbeatVolume(v) { this._heartbeatBaseVolume = THREE.MathUtils.clamp(v, 0, 1) }
+  setBGMVolume(v) { this._bgmVolume = THREE.MathUtils.clamp(v, 0, 1) }
+  setSFXVolume(v) { this.sfxVolume = THREE.MathUtils.clamp(v, 0, 1) }
+
+  getVolumes() {
+    return {
+      master: this.masterGain,
+      nailong: this.nailongVolume,
+      heartbeat: this._heartbeatBaseVolume || 0.7,
+      bgm: this._bgmVolume || 0.5,
+      sfx: this.sfxVolume
+    }
+  }
+
   updateListenerOrientation(forward, up) {
     if (!this.listener) return
     this.listener.forwardX.value = forward.x
