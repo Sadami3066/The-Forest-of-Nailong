@@ -15,11 +15,42 @@ export class GameEngine {
     this.hitFlashMesh = null
     this.hitFlashTimer = null
     this.isRunning = false
+    this._shakeAmount = 0       // 震屏强度
+    this._hitParticles = []     // 命中粒子
 
-    // 残影（保留用于将来可能的功能）
+    // 残影
     this._afterimages = []
     this._afterimageTexture = null
     this._afterimagesEnabled = false
+  }
+
+  // 震屏
+  shakeScreen(intensity = 0.08) {
+    this._shakeAmount = intensity
+  }
+
+  // 命中粒子爆炸
+  spawnHitParticles(position) {
+    const count = 25
+    for (let i = 0; i < count; i++) {
+      const geo = new THREE.SphereGeometry(0.06, 3, 3)
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xff6622, transparent: true, opacity: 1,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      })
+      const p = new THREE.Mesh(geo, mat)
+      p.position.copy(position)
+      p.userData = {
+        vel: new THREE.Vector3(
+          (Math.random() - 0.5) * 4,
+          Math.random() * 4,
+          (Math.random() - 0.5) * 4
+        ),
+        life: 0.5 + Math.random() * 0.3
+      }
+      this.scene.add(p)
+      this._hitParticles.push(p)
+    }
   }
 
   init(canvas) {
@@ -410,7 +441,36 @@ export class GameEngine {
       if (this._moonHalo) this._moonHalo.lookAt(this.camera.position)
     }
 
+    // 震屏衰减
+    if (this._shakeAmount > 0.001) {
+      this.camera.position.x += (Math.random() - 0.5) * this._shakeAmount
+      this.camera.position.y += (Math.random() - 0.5) * this._shakeAmount * 0.5
+      this._shakeAmount *= 0.85
+    }
+
+    // 更新命中粒子
+    const dt = 0.016
+    for (let i = this._hitParticles.length - 1; i >= 0; i--) {
+      const p = this._hitParticles[i]
+      p.userData.life -= dt
+      if (p.userData.life <= 0) {
+        this.scene.remove(p)
+        p.material.dispose()
+        p.geometry.dispose()
+        this._hitParticles.splice(i, 1)
+      } else {
+        p.position.add(p.userData.vel.clone().multiplyScalar(dt))
+        p.userData.vel.y += 2 * dt // 重力
+        p.material.opacity = p.userData.life / 0.8
+      }
+    }
+
     this.renderer.render(this.scene, this.camera)
+
+    // 恢复相机位置
+    if (this._shakeAmount > 0.001) {
+      this.camera.position.set(0, 1.6, 0)
+    }
   }
 
   // ==================== 残影 ====================

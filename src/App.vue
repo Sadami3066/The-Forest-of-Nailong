@@ -77,15 +77,22 @@ async function tryStartBGM() {
 document.addEventListener('click', tryStartBGM, { once: true })
 document.addEventListener('touchstart', tryStartBGM, { once: true })
 const uiState = ref({
-  state: 'idle', score: 0, timeRemaining: 60,
-  bestScore: 0, won: false, getAccuracy: () => 0
+  state: 'idle', score: 0, kills: 0, timeRemaining: 60,
+  bestScore: 0, won: false, combo: 0, maxCombo: 0,
+  getAccuracy: () => 0, getRating: () => 'C',
+  getJustUnlocked: () => [], getLeaderboard: () => [], getRank: () => 1
 })
 
 function syncUIState() {
   uiState.value = {
-    state: gs.state, score: gs.score,
+    state: gs.state, score: gs.score, kills: gs.kills,
     timeRemaining: gs.timeRemaining, bestScore: gs.bestScore,
-    won: gs.won, getAccuracy: () => gs.getAccuracy()
+    won: gs.won, combo: gs.combo, maxCombo: gs.maxCombo,
+    getAccuracy: () => gs.getAccuracy(),
+    getRating: () => gs.getRating(),
+    getJustUnlocked: () => gs.getJustUnlocked(),
+    getLeaderboard: () => gs.getLeaderboard(),
+    getRank: () => gs.getRank()
   }
 }
 
@@ -232,12 +239,16 @@ function handleFlash() {
     syncUIState()
     audio.playHitSound()
     engine.showHitFlash(aim.point)
+    engine.spawnHitParticles(aim.point)
+    engine.shakeScreen(0.06)
     naiwa.onHit()
     audio.stopNaiwaSound()
     prevNaiwaState = 'hit'
     showGif('kill', 2000)
   } else {
     audio.playMissSound()
+    gs.recordMiss()
+    syncUIState()
   }
 }
 

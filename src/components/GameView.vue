@@ -12,6 +12,7 @@
         :score="gameState.score"
         :time-remaining="gameState.timeRemaining"
         :kills="gameState.kills"
+        :combo="gameState.combo"
       />
       <Crosshair />
       <FireButton @fire="$emit('fire')" />

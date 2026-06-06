@@ -1,18 +1,17 @@
-/**
- * GameState — 游戏状态机
- * 管理状态流转、计时、得分
- */
 export const GameState = {
-  IDLE: 'idle',
-  STARTING: 'starting',
-  PLAYING: 'playing',
-  ROUND_END: 'round_end',
+  IDLE: 'idle', STARTING: 'starting', PLAYING: 'playing',
   GAME_OVER: 'game_over'
 }
 
-/**
- * GameStateManager — 游戏状态管理器
- */
+// 成就定义
+export const ACHIEVEMENTS = [
+  { id: 'first_kill', name: '新手猎人', icon: '🌱', desc: '首次照中奶蛙', threshold: 1 },
+  { id: 'hunter_10', name: '森林巡护', icon: '🔦', desc: '累计照中10次', threshold: 10 },
+  { id: 'hunter_30', name: '黑暗猎手', icon: '⚔️', desc: '累计照中30次', threshold: 30 },
+  { id: 'hunter_60', name: '暗夜传说', icon: '👻', desc: '累计照中60次', threshold: 60 },
+  { id: 'hunter_100', name: '奶蛙克星', icon: '🏆', desc: '累计照中100次', threshold: 100 }
+]
+
 export class GameStateManager {
   constructor() {
     this.state = GameState.IDLE
@@ -24,36 +23,33 @@ export class GameStateManager {
     this.bestScore = 0
     this.won = false
 
-    // 回调
-    this._onStateChange = null
-    this._onScoreChange = null
-    this._onTimeChange = null
-    this._timerInterval = null
+    // Combo
+    this.combo = 0
+    this.maxCombo = 0
 
-    this._loadBestScore()
+    // 成就
+    this.totalKills = 0       // 累计照中（跨局）
+    this._unlockedAchievements = []
+    this._justUnlocked = []    // 本局新解锁
+
+    // 排行榜
+    this._leaderboard = []
+
+    this._timerInterval = null
+    this._loadPersistent()
   }
 
-  /**
-   * 设置回调
-   */
-  onStateChange(cb) { this._onStateChange = cb }
-  onScoreChange(cb) { this._onScoreChange = cb }
-  onTimeChange(cb) { this._onTimeChange = cb }
-
-  /**
-   * 开始游戏
-   */
   start() {
     this.score = 0
     this.kills = 0
     this.shotsFired = 0
     this.timeRemaining = this.roundTime
+    this.combo = 0
+    this.maxCombo = 0
+    this._justUnlocked = []
     this._transition(GameState.STARTING)
   }
 
-  /**
-   * 确认准备就绪，进入游戏
-   */
   ready() {
     if (this.state === GameState.STARTING) {
       this._transition(GameState.PLAYING)
@@ -61,104 +57,141 @@ export class GameStateManager {
     }
   }
 
-  /**
-   * 记录一次射击
-   */
   recordShot() {
     if (this.state !== GameState.PLAYING) return
     this.shotsFired++
   }
 
-  /**
-   * 记录击杀
-   */
   recordKill() {
     if (this.state !== GameState.PLAYING) return
     this.kills++
-    this.score += 100
-    if (this._onScoreChange) this._onScoreChange(this.score, this.kills)
+    this.totalKills++
+    this.combo++
+    if (this.combo > this.maxCombo) this.maxCombo = this.combo
+    const multiplier = Math.min(this.combo, 5)
+    this.score += 100 * multiplier
+
+    // 检查成就
+    this._checkAchievements()
   }
 
-  /**
-   * 时间到
-   */
-  _onTimeUp() {
-    this._stopTimer()
-    this._transition(GameState.GAME_OVER)
+  recordMiss() {
+    this.combo = 0
+  }
 
-    // 更新最佳成绩
-    if (this.score > this.bestScore) {
-      this.bestScore = this.score
-      this._saveBestScore()
+  getMultiplier() {
+    return Math.min(this.combo, 5)
+  }
+
+  _checkAchievements() {
+    for (const a of ACHIEVEMENTS) {
+      if (this.totalKills >= a.threshold && !this._unlockedAchievements.includes(a.id)) {
+        this._unlockedAchievements.push(a.id)
+        this._justUnlocked.push(a)
+      }
     }
   }
 
-  /**
-   * 游戏结束（胜利或失败）
-   */
+  getJustUnlocked() {
+    return this._justUnlocked
+  }
+
+  getUnlockedAchievements() {
+    return ACHIEVEMENTS.filter(a => this._unlockedAchievements.includes(a.id))
+  }
+
+  // 排行榜
+  addToLeaderboard() {
+    const entry = { score: this.score, kills: this.kills, combo: this.maxCombo, won: this.won, date: Date.now() }
+    this._leaderboard.push(entry)
+    this._leaderboard.sort((a, b) => b.score - a.score)
+    this._leaderboard = this._leaderboard.slice(0, 10)
+    this._savePersistent()
+    return this._leaderboard.findIndex(e => e === entry) + 1
+  }
+
+  getLeaderboard() {
+    return this._leaderboard
+  }
+
+  getRank() {
+    if (this._leaderboard.length === 0) return 1
+    // 当前分数在排行榜中的位置
+    let rank = 1
+    for (const e of this._leaderboard) {
+      if (this.score > e.score) break
+      rank++
+    }
+    return rank
+  }
+
+  // 评级
+  getRating() {
+    const accuracy = this.shotsFired > 0 ? this.kills / this.shotsFired : 0
+    if (this.won && accuracy >= 0.7) return 'S'
+    if (this.won && accuracy >= 0.5) return 'A'
+    if (this.won) return 'B'
+    if (this.kills >= 3) return 'C'
+    return 'D'
+  }
+
   endGame() {
     this._stopTimer()
     this._transition(GameState.GAME_OVER)
     if (this.score > this.bestScore) {
       this.bestScore = this.score
-      this._saveBestScore()
+      this._savePersistent()
     }
+    this.addToLeaderboard()
   }
 
-  /**
-   * 返回主菜单
-   */
   backToMenu() {
     this._stopTimer()
     this._transition(GameState.IDLE)
   }
 
-  /**
-   * 获取精度
-   */
   getAccuracy() {
     if (this.shotsFired === 0) return 0
     return Math.round((this.kills / this.shotsFired) * 100)
   }
 
   _transition(newState) {
-    const oldState = this.state
     this.state = newState
-    if (this._onStateChange) this._onStateChange(newState, oldState)
   }
 
   _startTimer() {
     this._stopTimer()
     this._timerInterval = setInterval(() => {
       this.timeRemaining--
-      if (this._onTimeChange) this._onTimeChange(this.timeRemaining)
-      if (this.timeRemaining <= 0) {
-        this._onTimeUp()
-      }
+      if (this.timeRemaining <= 0) this._stopTimer()
     }, 1000)
   }
 
   _stopTimer() {
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval)
-      this._timerInterval = null
-    }
+    if (this._timerInterval) { clearInterval(this._timerInterval); this._timerInterval = null }
   }
 
-  _loadBestScore() {
+  _loadPersistent() {
     try {
-      const saved = localStorage.getItem('kill_naiwa_best')
-      if (saved) this.bestScore = parseInt(saved, 10) || 0
-    } catch (e) { /* ignore */ }
+      const a = localStorage.getItem('nw_achievements')
+      if (a) this._unlockedAchievements = JSON.parse(a)
+      const t = localStorage.getItem('nw_totalKills')
+      if (t) this.totalKills = parseInt(t) || 0
+      const s = localStorage.getItem('nw_bestScore')
+      if (s) this.bestScore = parseInt(s) || 0
+      const l = localStorage.getItem('nw_leaderboard')
+      if (l) this._leaderboard = JSON.parse(l)
+    } catch {}
   }
 
-  _saveBestScore() {
+  _savePersistent() {
     try {
-      localStorage.setItem('kill_naiwa_best', String(this.bestScore))
-    } catch (e) { /* ignore */ }
+      localStorage.setItem('nw_achievements', JSON.stringify(this._unlockedAchievements))
+      localStorage.setItem('nw_totalKills', String(this.totalKills))
+      localStorage.setItem('nw_bestScore', String(this.bestScore))
+      localStorage.setItem('nw_leaderboard', JSON.stringify(this._leaderboard))
+    } catch {}
   }
 
-  dispose() {
-    this._stopTimer()
-  }
+  dispose() { this._stopTimer() }
 }
