@@ -258,16 +258,16 @@ export class GyroscopeInput {
 
   calibrate() {
     if (this._isGyroActive) {
-      // 重置陀螺仪累积值
+      // 重置陀螺仪累积值，略微向下看以便看到地面
       this._accumYaw = 0
       this._lastAlpha = null
       this._targetYaw = 0
-      this._targetPitch = 0
+      this._targetPitch = 0.2  // 微微低头看地面
       console.log('[Gyro] 校准完成 — 视角归零')
     } else {
-      // 桌面：归零 + 重置鼠标激活状态
+      // 桌面：归零 + 重置鼠标激活状态，微微低头
       this._targetYaw = 0
-      this._targetPitch = 0
+      this._targetPitch = 0.2
       this._lastMouseX = null
       this._lastMouseY = null
       this._mouseActive = false

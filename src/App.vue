@@ -180,8 +180,9 @@ async function handleStart() {
   audio.startHeartbeat()
   audio.startBGM()
 
-  // 键盘
+  // 键盘 + 移动端点屏幕发射
   document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('click', onScreenTap)
 
   // 游戏循环
   if (!isLoopRunning) {
@@ -209,6 +210,7 @@ function handleGameOver(won) {
   audio.stopHeartbeat()
   audio.stopNaiwaSound()
   document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('click', onScreenTap)
   input.disable()
 
   gs.won = won
@@ -252,6 +254,14 @@ function onKeyDown(e) {
   }
 }
 
+function onScreenTap(e) {
+  // 只在移动端（触摸设备）响应，且不响应手电按钮上的点击
+  if (!('ontouchstart' in window)) return
+  const target = e.target
+  if (target && (target.closest('.flash-btn') || target.closest('.flash-container'))) return
+  handleFlash()
+}
+
 // 从教程直接进入游戏
 function handleStartFromTutorial() {
   showTutorial.value = false
@@ -289,6 +299,7 @@ function handleBackToMenu() {
   audio.stopBGM()
   engine.dispose()
   document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('click', onScreenTap)
   gs.backToMenu()
   currentState.value = gs.state
   syncUIState()
@@ -310,6 +321,7 @@ onUnmounted(() => {
   if (animFrameId) cancelAnimationFrame(animFrameId)
   if (gifTimer) clearTimeout(gifTimer)
   document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('click', onScreenTap)
   input.dispose()
   audio.dispose()
   engine.dispose()

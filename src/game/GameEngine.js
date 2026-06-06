@@ -39,6 +39,8 @@ export class GameEngine {
       const fov = aspect < 1 ? 100 : 75
       this.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 60)
       this.camera.position.set(0, 1.6, 0)
+      // 初始略微向下看，确保能看到地面
+      this.camera.quaternion.setFromEuler(new THREE.Euler(0.15, 0, 0, 'YXZ'))
 
       // 渲染器
       this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false })
@@ -130,10 +132,10 @@ export class GameEngine {
   // ==================== 地面 ====================
 
   _createGround() {
-    // 主地面
+    // 主地面 — 可见的暗绿色森林地面
     const groundGeo = new THREE.CircleGeometry(17, 56)
     const groundMat = new THREE.MeshBasicMaterial({
-      color: 0x080804,
+      color: 0x1a2a15,
       side: THREE.DoubleSide,
       depthWrite: true
     })
@@ -142,10 +144,10 @@ export class GameEngine {
     ground.position.y = -1.6
     this.scene.add(ground)
 
-    // 内圈 — 微微亮的空地
+    // 内圈 — 稍亮的空地
     const innerGeo = new THREE.CircleGeometry(3.5, 36)
     const innerMat = new THREE.MeshBasicMaterial({
-      color: 0x0e0e08,
+      color: 0x24301e,
       side: THREE.DoubleSide,
       depthWrite: true
     })

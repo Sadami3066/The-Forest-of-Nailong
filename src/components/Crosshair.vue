@@ -5,7 +5,6 @@
     <div class="crosshair-left"></div>
     <div class="crosshair-right"></div>
     <div class="crosshair-dot"></div>
-    <div class="crosshair-ring"></div>
   </div>
 </template>
 
@@ -27,12 +26,5 @@
   position: absolute; top: 50%; left: 50%;
   width: 3px; height: 3px; background: var(--hud-green);
   border-radius: 50%; transform: translate(-50%, -50%);
-}
-.crosshair-ring {
-  position: absolute; top: 50%; left: 50%;
-  width: 40px; height: 40px;
-  border: 1px solid rgba(0,255,65,0.25);
-  border-radius: 50%; transform: translate(-50%, -50%);
-  animation: breathe 3s ease-in-out infinite;
 }
 </style>
