@@ -18,8 +18,8 @@ export class GameStateManager {
     this.score = 0
     this.kills = 0
     this.shotsFired = 0
-    this.timeRemaining = 60
-    this.roundTime = 60
+    this.timeRemaining = 180
+    this.roundTime = 180
     this.bestScore = 0
     this.won = false
 

@@ -5,8 +5,8 @@
       <span class="score-value">{{ score }}</span>
     </div>
 
-    <div class="time-box hud-panel" :class="{ urgent: timeRemaining <= 10 }">
-      <span class="time-label">剩余</span>
+    <div class="time-box hud-panel" :class="{ dawn: isDawn }">
+      <span class="time-label">{{ isDawn ? '🌅 黎明' : '🌙 时间' }}</span>
       <span class="time-value">{{ formattedTime }}</span>
     </div>
 
@@ -35,10 +35,22 @@ const props = defineProps({
   combo: { type: Number, default: 0 }
 })
 
+// 3分钟 = 180秒 = 晚上6点到早上6点(12小时)
+// 每秒对应 12*60/180 = 4 分钟游戏时间
 const formattedTime = computed(() => {
-  const m = Math.floor(props.timeRemaining / 60)
-  const s = props.timeRemaining % 60
-  return `${m}:${String(s).padStart(2, '0')}`
+  const elapsed = 180 - props.timeRemaining
+  // 18:00 (6PM) 起始，经过 elapsed 秒 → elapsed/180*12 小时
+  const gameHours = 18 + (elapsed / 180) * 12
+  const h = Math.floor(gameHours) % 24
+  const m = Math.floor((gameHours % 1) * 60)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+})
+
+const isDawn = computed(() => {
+  // 凌晨4点后接近天亮
+  const elapsed = 180 - props.timeRemaining
+  const gameHours = 18 + (elapsed / 180) * 12
+  return gameHours >= 28 || gameHours <= 6 // 凌晨4点后(28=4AM) 或 6点前
 })
 </script>
 
@@ -55,7 +67,8 @@ const formattedTime = computed(() => {
 }
 .score-value { display: block; font-size: 1.4rem; font-weight: bold; color: var(--hud-green); text-shadow: 0 0 10px rgba(0,255,65,0.4); }
 .time-value { display: block; font-size: 1.4rem; font-weight: bold; color: var(--hud-green); text-shadow: 0 0 10px rgba(0,255,65,0.4); }
-.time-box.urgent .time-value { color: var(--hud-red); text-shadow: 0 0 10px rgba(255,51,51,0.5); animation: pulse-green 0.5s ease-in-out infinite; }
+.time-box.dawn .time-value { color: #ffcc66; text-shadow: 0 0 12px rgba(255,200,100,0.6); }
+.time-box.dawn .time-label { color: #ffcc66; }
 .kills-box { text-align: center; min-width: 40px; }
 .kills-icon { font-size: 1rem; display: block; }
 .kills-value { font-size: 1.1rem; font-weight: bold; color: var(--hud-amber); text-shadow: 0 0 8px rgba(255,170,0,0.3); }

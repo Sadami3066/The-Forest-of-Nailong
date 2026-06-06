@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <canvas ref="shareCanvas" style="display:none" width="600" height="400"></canvas>
+    <canvas ref="shareCanvas" style="display:none" width="800" height="500"></canvas>
   </div>
 </template>
 
@@ -71,34 +71,118 @@ function shareCard() {
   if (!canvas) return
   const ctx = canvas.getContext('2d')
   const gs = props.gameState
-  const w = 600, h = 400
+  const w = 800, h = 500
 
-  ctx.fillStyle = '#000a10'
-  ctx.fillRect(0, 0, w, h)
-  for (let y = 0; y < h; y += 4) {
-    ctx.fillStyle = 'rgba(0,0,0,0.05)'
-    ctx.fillRect(0, y, w, 2)
+  // === 背景 ===
+  // 暗绿渐变
+  const bg = ctx.createLinearGradient(0, 0, 0, h)
+  bg.addColorStop(0, '#000a10'); bg.addColorStop(0.5, '#020f08'); bg.addColorStop(1, '#000508')
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h)
+
+  // 扫描线
+  for (let y = 0; y < h; y += 5) {
+    ctx.fillStyle = 'rgba(0,0,0,0.04)'; ctx.fillRect(0, y, w, 3)
   }
-  ctx.fillStyle = '#00ff41'
-  ctx.font = 'bold 36px monospace'
-  ctx.textAlign = 'center'
-  ctx.shadowColor = 'rgba(0,255,65,0.6)'
-  ctx.shadowBlur = 15
-  ctx.fillText('奶 蛙 之 森', w / 2, 55)
-  ctx.shadowBlur = 0
-  ctx.fillStyle = gs.getRating() === 'S' ? '#ffaa00' : '#00ff41'
-  ctx.font = 'bold 80px monospace'
-  ctx.fillText(gs.getRating(), w / 2, 150)
-  ctx.fillStyle = '#ccddcc'
-  ctx.font = '18px monospace';
-  [ `得分: ${gs.score}    照中: ${gs.kills}次`,
-    `最高连击: ${gs.maxCombo}x    命中率: ${gs.getAccuracy()}%`,
-    `结果: ${gs.won ? '胜利 ✨' : '失败 💀'}` ]
-    .forEach((s, i) => ctx.fillText(s, w / 2, 210 + i * 32))
-  ctx.fillStyle = 'rgba(0,255,65,0.4)'
-  ctx.font = '14px monospace'
-  ctx.fillText('naiwa forest · 听声辨位黑暗求生', w / 2, h - 30)
 
+  // 边框发光
+  ctx.strokeStyle = 'rgba(0,255,65,0.3)'; ctx.lineWidth = 3
+  ctx.strokeRect(10, 10, w - 20, h - 20)
+  ctx.strokeStyle = 'rgba(0,255,65,0.08)'; ctx.lineWidth = 1
+  ctx.strokeRect(18, 18, w - 36, h - 36)
+
+  // 四角装饰
+  const corners = [[30,30],[w-30,30],[30,h-30],[w-30,h-30]]
+  corners.forEach(([cx, cy]) => {
+    ctx.fillStyle = 'rgba(0,255,65,0.5)'; ctx.fillRect(cx-15, cy-2, 15, 4)
+    ctx.fillRect(cx-2, cy-15, 4, 15)
+  })
+
+  // === 标题 ===
+  ctx.textAlign = 'center'
+  // 顶部装饰线
+  ctx.strokeStyle = 'rgba(0,255,65,0.15)'; ctx.lineWidth = 1
+  ctx.beginPath(); ctx.moveTo(w/2-150, 60); ctx.lineTo(w/2+150, 60); ctx.stroke()
+
+  ctx.fillStyle = '#00ff41'
+  ctx.font = 'bold 40px "Courier New", monospace'
+  ctx.shadowColor = 'rgba(0,255,65,0.6)'; ctx.shadowBlur = 20
+  ctx.fillText('奶 蛙 之 森', w / 2, 85)
+  ctx.shadowBlur = 0
+
+  // 副标题
+  ctx.fillStyle = 'rgba(0,255,65,0.35)'
+  ctx.font = '16px "Courier New", monospace'
+  ctx.fillText('—— 听声辨位 · 黑暗求生 ——', w / 2, 110)
+
+  // === 评级 ===
+  const rating = gs.getRating()
+  const ratingColors = { S: '#ffaa00', A: '#00ff41', B: '#88cc44', C: '#cccc44', D: '#884444' }
+  const rColor = ratingColors[rating] || '#00ff41'
+
+  // 评级大圆
+  ctx.beginPath(); ctx.arc(w / 2, 195, 55, 0, Math.PI * 2)
+  ctx.strokeStyle = rColor; ctx.lineWidth = 4; ctx.stroke()
+  ctx.beginPath(); ctx.arc(w / 2, 195, 48, 0, Math.PI * 2)
+  ctx.strokeStyle = rColor + '44'; ctx.lineWidth = 1; ctx.stroke()
+
+  ctx.fillStyle = rColor; ctx.font = 'bold 72px "Courier New", monospace'
+  ctx.shadowColor = rColor + '88'; ctx.shadowBlur = 25
+  ctx.fillText(rating, w / 2, 218)
+  ctx.shadowBlur = 0
+
+  // 评级标签
+  const ratingNames = { S: '传奇猎手', A: '精英猎手', B: '熟练猎手', C: '新手猎手', D: '见习猎手' }
+  ctx.fillStyle = rColor
+  ctx.font = '14px "Courier New", monospace'
+  ctx.fillText(ratingNames[rating] || '', w / 2, 260)
+
+  // === 数据面板 ===
+  const panelY = 285
+  // 面板背景
+  ctx.fillStyle = 'rgba(0,15,8,0.6)'; ctx.strokeStyle = 'rgba(0,255,65,0.1)'; ctx.lineWidth = 1
+  ctx.beginPath(); ctx.roundRect(w/2-240, panelY, 480, 105, 8); ctx.fill(); ctx.stroke()
+
+  // 分隔线
+  const dataItems = [
+    { label: '得分', value: gs.score, color: '#ffaa00' },
+    { label: '照中', value: `${gs.kills}次`, color: '#00ff41' },
+    { label: '连击', value: `${gs.maxCombo}x`, color: '#ffaa00' },
+    { label: '命中率', value: `${gs.getAccuracy()}%`, color: '#00ff41' }
+  ]
+  const itemW = 480 / dataItems.length
+  dataItems.forEach((d, i) => {
+    const x = w/2 - 240 + itemW * i + itemW / 2
+    ctx.fillStyle = d.color; ctx.font = 'bold 28px "Courier New", monospace'
+    ctx.textAlign = 'center'; ctx.fillText(d.value, x, panelY + 42)
+    ctx.fillStyle = 'rgba(200,220,200,0.5)'; ctx.font = '12px "Courier New", monospace'
+    ctx.fillText(d.label, x, panelY + 64)
+    // 竖分隔线
+    if (i < dataItems.length - 1) {
+      ctx.strokeStyle = 'rgba(0,255,65,0.08)'; ctx.lineWidth = 1
+      ctx.beginPath(); ctx.moveTo(x + itemW/2, panelY + 10); ctx.lineTo(x + itemW/2, panelY + 95); ctx.stroke()
+    }
+  })
+
+  // === 结果标签 ===
+  const resultY = 415
+  const wonBadge = gs.won
+  ctx.fillStyle = wonBadge ? 'rgba(0,255,65,0.1)' : 'rgba(255,50,50,0.1)'
+  ctx.strokeStyle = wonBadge ? 'rgba(0,255,65,0.3)' : 'rgba(255,50,50,0.3)'
+  ctx.beginPath(); ctx.roundRect(w/2-100, resultY, 200, 36, 18); ctx.fill(); ctx.stroke()
+  ctx.fillStyle = wonBadge ? '#00ff41' : '#ff3333'
+  ctx.font = 'bold 18px "Courier New", monospace'
+  ctx.fillText(wonBadge ? '✨ 生 还 ✨' : '💀 阵 亡 💀', w / 2, resultY + 26)
+
+  // === 底部 ===
+  ctx.fillStyle = 'rgba(0,255,65,0.2)'
+  ctx.font = '12px "Courier New", monospace'
+  ctx.fillText('NAIWA FOREST · SURVIVAL HORROR', w / 2, h - 25)
+
+  // 底部装饰
+  ctx.strokeStyle = 'rgba(0,255,65,0.1)'; ctx.lineWidth = 1
+  ctx.beginPath(); ctx.moveTo(w/2-120, h-40); ctx.lineTo(w/2+120, h-40); ctx.stroke()
+
+  // === 下载 ===
   canvas.toBlob(blob => {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

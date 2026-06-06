@@ -29,6 +29,17 @@
       @update="handleVolumeChange"
       @close="showSettings = false"
     />
+
+    <!-- 陀螺仪校准提示 -->
+    <Transition name="fade">
+      <div v-if="showGyroHint" class="gyro-hint-overlay">
+        <div class="gyro-hint-card">
+          <span class="gyro-hint-icon">📱</span>
+          <p class="gyro-hint-text">将手机举至与地面垂直</p>
+          <p class="gyro-hint-sub">保持自然握持姿势即可</p>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -59,6 +70,7 @@ const gifType = ref('none')
 const bestScore = ref(gs.bestScore)
 const showTutorial = ref(false)
 const showSettings = ref(false)
+const showGyroHint = ref(false)
 const currentVolumes = reactive(audio.getVolumes())
 
 // 主页BGM — 首次用户交互时启动
@@ -201,6 +213,13 @@ async function handleStart() {
   gs.ready()
   currentState.value = gs.state
   syncUIState()
+
+  // 移动端显示陀螺仪校准提示
+  if ('ontouchstart' in window) {
+    showGyroHint.value = true
+    setTimeout(() => { showGyroHint.value = false }, 3000)
+  }
+
   console.log('game ready')
 }
 
@@ -342,4 +361,29 @@ onUnmounted(() => {
 
 <style scoped>
 #app-root { width: 100%; height: 100%; position: relative; }
+
+.gyro-hint-overlay {
+  position: fixed; bottom: 20%; left: 0; right: 0;
+  display: flex; justify-content: center; z-index: 20;
+  pointer-events: none;
+}
+.gyro-hint-card {
+  background: rgba(0,0,0,0.8); border: 1px solid rgba(0,255,65,0.25);
+  border-radius: 12px; padding: 16px 24px; text-align: center;
+  animation: hintPulse 3s ease-in-out;
+}
+.gyro-hint-icon { font-size: 2rem; display: block; margin-bottom: 6px; }
+.gyro-hint-text { font-size: 0.95rem; color: var(--hud-green); letter-spacing: 0.08em; margin: 0; }
+.gyro-hint-sub { font-size: 0.75rem; color: var(--text-dim); margin: 4px 0 0; }
+
+.fade-enter-active { animation: hintPulse 3s ease-out; }
+.fade-leave-active { transition: opacity 0.5s; }
+.fade-leave-to { opacity: 0; }
+
+@keyframes hintPulse {
+  0% { opacity: 0; transform: translateY(10px); }
+  15% { opacity: 1; transform: translateY(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
 </style>
